@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
+	"github.com/fatih/color"
 	flag "github.com/spf13/pflag"
 	"io"
 	"os"
@@ -22,6 +23,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
+}
+
+func logln(msg string) {
+	color.New(color.Bold).Fprintln(color.Error, msg)
 }
 
 func ctxmain(ctx context.Context) error {
@@ -61,7 +66,7 @@ func ctxmain(ctx context.Context) error {
 	}
 
 	if input == os.Stdin {
-		fmt.Fprintln(os.Stderr, "Reading input from stdin. Press Ctrl+D when input is complete.")
+		logln("Reading input from stdin. Press Ctrl+D when input is complete.")
 	}
 
 	inputPayload, err := io.ReadAll(input)
@@ -70,7 +75,7 @@ func ctxmain(ctx context.Context) error {
 	}
 
 	start := time.Now()
-	fmt.Fprintf(os.Stderr, "Invoking Lambda function %s now (%s)\n", functionName, start.Format(time.Stamp))
+	logln(fmt.Sprintf("Invoking Lambda function %s now (%s)", functionName, start.Format(time.Stamp)))
 
 	api := lambda.NewFromConfig(cfg)
 	invoke, err := api.Invoke(ctx, &lambda.InvokeInput{
@@ -92,8 +97,12 @@ func ctxmain(ctx context.Context) error {
 	startIndex := strings.Index(logTail, "START RequestId")
 	if startIndex >= 0 {
 		// TODO: don't throw away INIT_START and extension stuff
+		logln("Function logs:")
 		fmt.Fprintln(os.Stderr, logTail[startIndex:])
 
+		if output == os.Stdout {
+			logln("Function output:")
+		}
 		_, err = fmt.Fprintln(output, string(invoke.Payload))
 		if err != nil {
 			return fmt.Errorf("writing output: %w", err)
@@ -101,8 +110,8 @@ func ctxmain(ctx context.Context) error {
 
 		ferr := aws.ToString(invoke.FunctionError)
 		if ferr != "" {
-			// TODO: do something with ferr
-			//fmt.Println(ferr)
+			logln("Function error:")
+			fmt.Fprintln(os.Stderr, ferr)
 			os.Exit(2)
 		} else {
 			os.Exit(0)
