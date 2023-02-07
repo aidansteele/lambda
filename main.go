@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/lambda"
 	"github.com/aws/aws-sdk-go-v2/service/lambda/types"
 	"github.com/fatih/color"
+	"github.com/mattn/go-isatty"
 	flag "github.com/spf13/pflag"
 	"io"
 	"os"
@@ -65,7 +66,7 @@ func ctxmain(ctx context.Context) error {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
-	if input == os.Stdin {
+	if input == os.Stdin && isatty.IsTerminal(os.Stdin.Fd()) {
 		logln("Reading input from stdin. Press Ctrl+D when input is complete.")
 	}
 
@@ -100,7 +101,7 @@ func ctxmain(ctx context.Context) error {
 		logln("Function logs:")
 		fmt.Fprintln(os.Stderr, logTail[startIndex:])
 
-		if output == os.Stdout {
+		if output == os.Stdout && isatty.IsTerminal(os.Stdout.Fd()) {
 			logln("Function output:")
 		}
 		_, err = fmt.Fprintln(output, string(invoke.Payload))
